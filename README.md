@@ -167,4 +167,3 @@ services:
     env_file:
       - .env
 ```
-
