@@ -1,3 +1,4 @@
+import json
 import click
 from slipstream.ingest.auth import build_authorization_url, exchange_code_for_token
 from slipstream.ingest.strava import fetch_activity_streams, list_activities
@@ -60,13 +61,28 @@ def fetch_activities_cmd(per_page: int, page: int):
 
 @cli.command(name="fetch-stream")
 @click.argument("activity_id", type=int)
-def fetch_stream(activity_id: int):
-    """Fetch streams for a single activity and print keys available."""
-    streams = fetch_activity_streams(activity_id)
-    if isinstance(streams, dict):
-        click.echo("Keys: " + ", ".join(streams.keys()))
+@click.option("--output", "-o", help="Output file path (JSON)")
+@click.option("--pretty/--no-pretty", default=True, help="Pretty print JSON")
+@click.option(
+    "--keys",
+    help="Comma-separated stream types (e.g., 'heartrate,watts,cadence'). Defaults to all available streams.",
+)
+def fetch_stream(activity_id: int, output: str, pretty: bool, keys: str):
+    """Fetch streams for a single activity and print or save the data."""
+    if keys:
+        streams = fetch_activity_streams(activity_id, keys=keys)
     else:
-        click.echo(str(streams))
+        streams = fetch_activity_streams(activity_id)
+
+    if output:
+        with open(output, "w") as f:
+            json.dump(streams, f, indent=2 if pretty else None)
+        click.echo(f"Saved stream data to {output}")
+    else:
+        if pretty:
+            click.echo(json.dumps(streams, indent=2))
+        else:
+            click.echo(json.dumps(streams))
 
 
 if __name__ == "__main__":

@@ -89,8 +89,23 @@ Fetch a page of activities:
 poetry run python scripts/cli.py fetch-activities --per-page 30 --page 1
 ```
 
-Fetch streams for a single activity:
+Fetch stream data for a single activity:
 
 ```bash
+# Print all available streams to console (pretty-printed JSON)
 poetry run python scripts/cli.py fetch-stream 123456789
+
+# Save to a file
+poetry run python scripts/cli.py fetch-stream 123456789 --output activity_data.json
+
+# Fetch specific streams only
+poetry run python scripts/cli.py fetch-stream 123456789 --keys "heartrate,watts,cadence"
 ```
+
+**Available stream types:** `time`, `latlng`, `distance`, `altitude`, `velocity_smooth`, `heartrate`, `cadence`, `watts`, `temp`, `moving`, `grade_smooth`
+
+**Stream data format:** When `key_by_type=True`, the response is a dict where each key is a stream type and the value contains:
+- `data`: Array of data points
+- `series_type`: Type of data (e.g., "distance", "time")
+- `original_size`: Number of data points
+- `resolution`: Resolution level
