@@ -1,4 +1,15 @@
+# Environment and secrets
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+credentials.json
+secrets.*
+*_secret*
+*_token*
+.secrets.baseline
 
 # Python
 __pycache__/
@@ -39,3 +50,13 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Data files (prevent accidentally committing downloaded activity data)
+*.parquet
+*.csv
+data/
+raw_data/
+downloads/
+
+# Strava credentials cache
+.slipstream/
