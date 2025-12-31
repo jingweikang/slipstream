@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import requests
 
@@ -30,7 +30,7 @@ def _get_bearer_token() -> str:
     return settings.STRAVA_ACCESS_TOKEN
 
 
-def fetch_activity_streams(activity_id: int) -> Dict[str, Any]:
+def fetch_activity_streams(activity_id: int) -> dict[str, Any]:
     token = _get_bearer_token()
     url = f"https://www.strava.com/api/v3/activities/{activity_id}/streams"
     headers = {"Authorization": f"Bearer {token}"}

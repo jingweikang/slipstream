@@ -51,7 +51,7 @@ def auth_exchange(code: str):
 def fetch_activities_cmd(per_page: int, page: int):
     """Fetch and print a page of activities for the authorized user."""
     acts = list_activities(per_page=per_page, page=page)
-    click.echo("Found activities: %d" % (len(acts) if isinstance(acts, list) else 0))
+    click.echo(f"Found activities: {len(acts) if isinstance(acts, list) else 0}")
     for a in acts:
         click.echo(
             f"{a['id']}: {a.get('name')} ({a.get('type')}) {a.get('start_date')}"
