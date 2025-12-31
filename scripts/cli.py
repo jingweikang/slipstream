@@ -1,6 +1,6 @@
 import click
-from slipstream.ingest.strava import list_activities, fetch_activity_streams
 from slipstream.ingest.auth import build_authorization_url, exchange_code_for_token
+from slipstream.ingest.strava import fetch_activity_streams, list_activities
 from slipstream.settings import settings
 
 
@@ -53,7 +53,9 @@ def fetch_activities_cmd(per_page: int, page: int):
     acts = list_activities(per_page=per_page, page=page)
     click.echo("Found activities: %d" % (len(acts) if isinstance(acts, list) else 0))
     for a in acts:
-        click.echo(f"{a['id']}: {a.get('name')} ({a.get('type')}) {a.get('start_date')}")
+        click.echo(
+            f"{a['id']}: {a.get('name')} ({a.get('type')}) {a.get('start_date')}"
+        )
 
 
 @cli.command(name="fetch-stream")

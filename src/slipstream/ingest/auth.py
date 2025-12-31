@@ -1,19 +1,25 @@
 from __future__ import annotations
+
 import time
-from typing import Dict, Any
+from typing import Any
+
 import requests
 
 TOKEN_URL = "https://www.strava.com/oauth/token"
 
 
-def build_authorization_url(client_id: str, redirect_uri: str, scope: str = "activity:read_all") -> str:
+def build_authorization_url(
+    client_id: str, redirect_uri: str, scope: str = "activity:read_all"
+) -> str:
     return (
         f"https://www.strava.com/oauth/authorize?client_id={client_id}"
         f"&response_type=code&redirect_uri={redirect_uri}&scope={scope}&approval_prompt=auto"
     )
 
 
-def exchange_code_for_token(code: str, client_id: str, client_secret: str) -> Dict[str, Any]:
+def exchange_code_for_token(
+    code: str, client_id: str, client_secret: str
+) -> dict[str, Any]:
     resp = requests.post(
         TOKEN_URL,
         data={
@@ -27,7 +33,9 @@ def exchange_code_for_token(code: str, client_id: str, client_secret: str) -> Di
     return resp.json()
 
 
-def refresh_access_token(refresh_token: str, client_id: str, client_secret: str) -> Dict[str, Any]:
+def refresh_access_token(
+    refresh_token: str, client_id: str, client_secret: str
+) -> dict[str, Any]:
     resp = requests.post(
         TOKEN_URL,
         data={

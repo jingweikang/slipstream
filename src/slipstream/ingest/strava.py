@@ -1,7 +1,9 @@
-from typing import Dict, Any
+from typing import Any, Dict
+
 import requests
+
+from slipstream.ingest.auth import is_token_expired, refresh_access_token
 from slipstream.settings import settings
-from slipstream.ingest.auth import refresh_access_token, is_token_expired
 
 
 def _get_bearer_token() -> str:
