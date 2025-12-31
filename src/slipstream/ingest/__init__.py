@@ -6,4 +6,5 @@ should import from `slipstream.ingest`.
 
 from .strava import fetch_activity_streams, list_activities
 
+
 __all__ = ["list_activities", "fetch_activity_streams"]

@@ -5,6 +5,7 @@ from typing import Any
 
 import requests
 
+
 TOKEN_URL = "https://www.strava.com/oauth/token"
 
 
