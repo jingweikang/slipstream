@@ -1,6 +1,7 @@
 import json
 
 import click
+from slipstream.analysis.query import execute_query, get_summary_stats
 from slipstream.ingest.auth import build_authorization_url, exchange_code_for_token
 from slipstream.ingest.backfill import backfill_activities
 from slipstream.ingest.strava import fetch_activity_streams, list_activities
@@ -157,6 +158,77 @@ def backfill_activities_cmd(
         after=after,
         max_workers=max_workers,
     )
+
+
+@cli.command(name="query")
+@click.argument("sql")
+def query_cmd(sql: str):
+    """Execute a SQL query against parquet files.
+
+    You can reference 'metadata' and 'activities' tables in your queries.
+
+    Examples:
+
+    \b
+    # Count activities by type
+    poetry run python scripts/cli.py query "SELECT type, COUNT(*) FROM metadata GROUP BY type"
+
+    \b
+    # Get activities with power data
+    poetry run python scripts/cli.py query "SELECT COUNT(DISTINCT filename) FROM 'data/activities/*.parquet' WHERE watts IS NOT NULL"
+    """
+    try:
+        results = execute_query(sql)
+
+        if not results:
+            click.echo("No results")
+            return
+
+        for row in results:
+            click.echo("\t".join(str(x) for x in row))
+
+    except Exception as e:
+        click.echo(f"Error executing query: {e}", err=True)
+
+
+@cli.command(name="stats")
+def stats_cmd():
+    """Show summary statistics about downloaded activities."""
+    stats = get_summary_stats()
+
+    if "error" in stats:
+        click.echo(stats["error"], err=True)
+        return
+
+    click.echo("=" * 60)
+    click.echo("ACTIVITY SUMMARY STATISTICS")
+    click.echo("=" * 60)
+    click.echo()
+
+    click.echo(f"Total Activities: {stats['total_activities']}")
+    click.echo(f"Date Range: {stats['first_activity']} to {stats['last_activity']}")
+    click.echo()
+
+    click.echo(f"Total Distance: {stats['total_km']:,.1f} km")
+    click.echo(f"Total Time: {stats['total_hours']:,.1f} hours")
+    click.echo(f"Total Elevation: {stats['total_elevation_m']:,.1f} m")
+    click.echo()
+
+    click.echo("Activities by Type:")
+    for activity_type, count in stats["by_type"]:
+        click.echo(f"  {activity_type}: {count}")
+    click.echo()
+
+    if stats["by_year"]:
+        click.echo("Activities by Year:")
+        for year, count in stats["by_year"]:
+            click.echo(f"  {int(year)}: {count}")
+        click.echo()
+
+    if stats["by_month"]:
+        click.echo("Recent Months (last 12):")
+        for month, count in stats["by_month"]:
+            click.echo(f"  {month}: {count}")
 
 
 if __name__ == "__main__":
