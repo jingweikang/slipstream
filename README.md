@@ -47,6 +47,32 @@ Activities by Year:
 
 **Data stored:** 1,125 activities (90 MB) in Parquet format with full stream data (HR, power, cadence, GPS, altitude, etc.)
 
+## Web Map Viewer
+
+Interactive web application for visualizing activities on a map with clustering and filtering.
+
+![Web App Screenshot](docs/images/web-app-screenshot.png)
+
+**Features:**
+- 🗺️ Interactive map with 601 GPS-enabled activities
+- 📍 Yelp-style marker clustering that splits on zoom
+- 🔍 Filter by activity type, distance range, and elevation gain
+- 🛣️ Click markers to view activity details
+- 🎨 Color-coded route visualization by activity type
+- ⚡ Fast querying with DuckDB backend
+
+**Start the web viewer:**
+```bash
+poetry run python scripts/cli.py web
+# Open http://localhost:8080 in your browser
+```
+
+**Usage:**
+- Use the filter panel on the right to narrow down activities
+- Click on map markers to see activity details
+- Click "Show Route" to display the full GPS track
+- Zoom in/out to see clusters split into individual activities
+
 ## Future Phases
 
 - **Phase 1**: Data exploration and validation (DuckDB queries, summary statistics, data quality checks)

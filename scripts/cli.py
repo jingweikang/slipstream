@@ -231,5 +231,33 @@ def stats_cmd():
             click.echo(f"  {month}: {count}")
 
 
+@cli.command(name="web")
+@click.option("--host", default="127.0.0.1", help="Host to bind to")
+@click.option("--port", default=8080, help="Port to bind to")
+def web_cmd(host: str, port: int):
+    """Start the web map viewer.
+
+    This command starts a web server that serves an interactive map
+    of your activities with clustering and filtering capabilities.
+
+    Example:
+
+    \b
+    # Start the web server (default: http://127.0.0.1:8080)
+    poetry run python scripts/cli.py web
+
+    \b
+    # Start on a different port
+    poetry run python scripts/cli.py web --port 9000
+    """
+    import uvicorn
+    from slipstream.web.app import app
+
+    click.echo(f"Starting web server at http://{host}:{port}")
+    click.echo("Press Ctrl+C to stop")
+
+    uvicorn.run(app, host=host, port=port)
+
+
 if __name__ == "__main__":
     cli()
