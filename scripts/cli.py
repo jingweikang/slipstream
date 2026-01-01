@@ -1,6 +1,8 @@
 import json
+
 import click
 from slipstream.ingest.auth import build_authorization_url, exchange_code_for_token
+from slipstream.ingest.backfill import backfill_activities
 from slipstream.ingest.strava import fetch_activity_streams, list_activities
 from slipstream.settings import settings
 
@@ -49,9 +51,17 @@ def auth_exchange(code: str):
 @cli.command(name="fetch-activities")
 @click.option("--per-page", default=30, help="Activities per page")
 @click.option("--page", default=1, help="Page number")
-def fetch_activities_cmd(per_page: int, page: int):
+@click.option(
+    "--before", type=int, help="Epoch timestamp: filter activities before this time"
+)
+@click.option(
+    "--after", type=int, help="Epoch timestamp: filter activities after this time"
+)
+def fetch_activities_cmd(
+    per_page: int, page: int, before: int | None, after: int | None
+):
     """Fetch and print a page of activities for the authorized user."""
-    acts = list_activities(per_page=per_page, page=page)
+    acts = list_activities(per_page=per_page, page=page, before=before, after=after)
     click.echo(f"Found activities: {len(acts) if isinstance(acts, list) else 0}")
     for a in acts:
         click.echo(
@@ -83,6 +93,52 @@ def fetch_stream(activity_id: int, output: str, pretty: bool, keys: str):
             click.echo(json.dumps(streams, indent=2))
         else:
             click.echo(json.dumps(streams))
+
+
+@cli.command(name="backfill-activities")
+@click.option(
+    "--max-activities",
+    type=int,
+    help="Maximum number of activities to process (useful for testing)",
+)
+@click.option(
+    "--before",
+    type=int,
+    help="Epoch timestamp: only backfill activities before this time",
+)
+@click.option(
+    "--after",
+    type=int,
+    help="Epoch timestamp: only backfill activities after this time (useful for incremental updates)",
+)
+def backfill_activities_cmd(
+    max_activities: int | None, before: int | None, after: int | None
+):
+    """Backfill activities from Strava to parquet files.
+
+    This command will:
+    - Fetch activities using pagination (with optional before/after filters)
+    - Download stream data for each activity
+    - Save streams as individual parquet files in data/activities/
+    - Save activity metadata to data/metadata.parquet
+    - Skip activities that already exist locally
+    - Log failures to data/failures.log
+
+    Examples:
+
+    \b
+    # Backfill all activities
+    poetry run python scripts/cli.py backfill-activities
+
+    \b
+    # Backfill only recent activities (last 7 days)
+    poetry run python scripts/cli.py backfill-activities --after $(date -v-7d +%s)
+
+    \b
+    # Test with just 5 activities
+    poetry run python scripts/cli.py backfill-activities --max-activities 5
+    """
+    backfill_activities(max_activities=max_activities, before=before, after=after)
 
 
 if __name__ == "__main__":
