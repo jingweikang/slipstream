@@ -89,8 +89,44 @@ Fetch a page of activities:
 poetry run python scripts/cli.py fetch-activities --per-page 30 --page 1
 ```
 
-Fetch streams for a single activity:
+Fetch stream data for a single activity:
 
 ```bash
+# Print all available streams to console (pretty-printed JSON)
 poetry run python scripts/cli.py fetch-stream 123456789
+
+# Save to a file
+poetry run python scripts/cli.py fetch-stream 123456789 --output activity_data.json
+
+# Fetch specific streams only
+poetry run python scripts/cli.py fetch-stream 123456789 --keys "heartrate,watts,cadence"
 ```
+
+**Available stream types:** `time`, `latlng`, `distance`, `altitude`, `velocity_smooth`, `heartrate`, `cadence`, `watts`, `temp`, `moving`, `grade_smooth`
+
+**Stream data format:** When `key_by_type=True`, the response is a dict where each key is a stream type and the value contains:
+- `data`: Array of data points
+- `series_type`: Type of data (e.g., "distance", "time")
+- `original_size`: Number of data points
+- `resolution`: Resolution level
+
+Backfill activities to parquet files:
+
+```bash
+# Backfill all activities (uses 5 parallel workers by default)
+poetry run python scripts/cli.py backfill-activities
+
+# Backfill activities from 2024
+poetry run python scripts/cli.py backfill-activities --after 1704067200 --before 1735689600
+
+# Backfill recent activities (last 7 days)
+poetry run python scripts/cli.py backfill-activities --after $(date -v-7d +%s)
+
+# Use 10 parallel workers for faster downloads
+poetry run python scripts/cli.py backfill-activities --max-workers 10
+
+# Test with just 5 activities
+poetry run python scripts/cli.py backfill-activities --max-activities 5
+```
+
+Activities are saved to `data/activities/{activity_id}.parquet` with metadata in `data/metadata.parquet`
