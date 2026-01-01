@@ -109,3 +109,24 @@ poetry run python scripts/cli.py fetch-stream 123456789 --keys "heartrate,watts,
 - `series_type`: Type of data (e.g., "distance", "time")
 - `original_size`: Number of data points
 - `resolution`: Resolution level
+
+Backfill activities to parquet files:
+
+```bash
+# Backfill all activities (uses 5 parallel workers by default)
+poetry run python scripts/cli.py backfill-activities
+
+# Backfill activities from 2024
+poetry run python scripts/cli.py backfill-activities --after 1704067200 --before 1735689600
+
+# Backfill recent activities (last 7 days)
+poetry run python scripts/cli.py backfill-activities --after $(date -v-7d +%s)
+
+# Use 10 parallel workers for faster downloads
+poetry run python scripts/cli.py backfill-activities --max-workers 10
+
+# Test with just 5 activities
+poetry run python scripts/cli.py backfill-activities --max-activities 5
+```
+
+Activities are saved to `data/activities/{activity_id}.parquet` with metadata in `data/metadata.parquet`
