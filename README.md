@@ -1,86 +1,36 @@
 # slipstream
-Cycling Data Analysis Project
+
+Cycling data analysis and ingestion tooling for Strava performance data.
+
+> **Note**: This project is being developed with significant contributions from Claude (Anthropic's AI assistant). Much of the codebase architecture, refactoring, and tooling setup has been collaboratively designed and implemented with AI assistance.
 
 ## Goal
-Build a system to analyze cycling performance data and detect fatigue patterns during efforts, with a focus on improving FTP and pacing strategy.
 
-## Project Phases
+Analyze cycling performance data to detect fatigue patterns and improve FTP (Functional Threshold Power) and pacing strategy.
 
-### Phase 0: Setup & Authentication
-- [ ] Register application with Strava API
-- [ ] Implement OAuth flow to access personal data
-- [ ] Test API connectivity and rate limits
+## Current Status
 
-### Phase 1: Data Ingestion & Storage
+**Phase 0: Authentication & Data Ingestion**
 
-#### Phase 1a: Historical Data Backfill
-- [ ] Fetch all historical activities from Strava API
-- [ ] Download detailed stream data (HR, power, cadence, altitude, GPS, etc.)
-- [ ] Store raw data in Parquet files organized by activity
-- [ ] Determine data access patterns, data model, etc.
-- [ ] Build incremental update script for new activities
-- [ ] Identify and tag the 50+ attempts at primary climbing segment
+The project currently supports:
+- OAuth authentication with Strava API
+- Fetching activity lists and detailed stream data (HR, power, cadence, altitude, GPS)
+- Stateless credential management via environment variables
 
-#### Phase 1b: Live Sensor Data Ingestion (Future)
-- [ ] Connect to BLE heart rate monitor and power meter
-- [ ] Capture raw sensor streams with timestamps
-- [ ] Use Flink to align/zip multi-rate sensor streams
-- [ ] Write live data to same Parquet format as historical data
-- [ ] Handle out-of-order data and sensor dropouts
+## Future Phases
 
-### Phase 1.5: Data Exploration & Visualization
-- [ ] Create Jupyter notebook for exploratory analysis
-- [ ] Visualize HR/Power relationships across segment attempts
-- [ ] Plot performance distribution (13-18 min range on climbing segment)
-- [ ] Identify outlier attempts and examine context
-- [ ] Generate summary statistics by effort type
-
-### Phase 2: Batch Analysis (Spark)
-- [ ] Extract all threshold efforts from historical data (>85% FTP, 5+ min)
-- [ ] Build baseline HR/Power relationship model
-- [ ] Analyze 50 climbing segment attempts:
-  - [ ] Compare top 10 vs bottom 10 performances
-  - [ ] Identify pacing patterns (steady vs variable power)
-  - [ ] Examine HR response curves
-  - [ ] Detect early indicators of strong/weak attempts
-- [ ] Analyze 6 FTP tests for validation
-- [ ] Document patterns that differentiate successful efforts
-
-### Phase 2.5: Dashboard & Insights Visualization
-- [ ] Build dashboard to display Phase 2 findings
-- [ ] Visualize baseline models and performance patterns
-- [ ] Create comparison views for segment attempts
-- [ ] Display fatigue indicators and thresholds
-
-### Phase 3: Real-Time Stream Processing (Flink)
-- [ ] Set up Flink for real-time data processing
-- [ ] Implement sliding window calculations (30s power, HR trends)
-- [ ] Build fatigue state estimator using Phase 2 patterns
-- [ ] Create real-time comparison to historical baselines
-- [ ] Test with FTP test scenarios (20-min efforts in non-ERG mode)
-- [ ] Generate real-time pacing guidance:
-  - [ ] HR/Power decoupling metrics
-  - [ ] Time-in-zone tracking
-  - [ ] Comparison to successful historical attempts
-  - [ ] Warning signals for degradation
-
-### Phase 4: Future Enhancements
-- [ ] Expand to other workout types beyond FTP tests
-- [ ] Incorporate additional context (sleep, nutrition, training load)
-- [ ] Build predictive models as more data accumulates
-- [ ] Add audio/visual feedback for live workouts
-
-## Data Sources
-- **Primary**: 15-min climbing segment (~50 attempts, 13-18 min range)
-- **Secondary**: 6 FTP tests (~20 min each)
-- **Supporting**: All threshold efforts from ride history
+- **Phase 1**: Historical data backfill and storage (Parquet files), incremental updates
+- **Phase 2**: Batch analysis with Spark to identify fatigue patterns and pacing strategies
+- **Phase 3**: Real-time stream processing with Flink for live workout guidance
+- **Phase 4**: Enhanced analytics with sleep, nutrition, and training load context
 
 ## Technical Stack
-- **Storage**: Parquet files + DuckDB for queries
-- **Batch Processing**: Apache Spark
-- **Stream Processing**: Apache Flink
-- **Data Source**: Strava API (historical), BLE sensors (future live data)
-- **Visualization**: Jupyter notebooks, dashboard TBD
+
+- Python 3.11+
+- Poetry for dependency management
+- Pydantic v2 + pydantic-settings for configuration
+- Click for CLI
+- requests for HTTP
 
 ## Getting Started
 
@@ -143,27 +93,4 @@ Fetch streams for a single activity:
 
 ```bash
 poetry run python scripts/cli.py fetch-stream 123456789
-```
-
-### Docker Deployment
-
-For Docker deployment, set all environment variables as container environment variables or use Docker secrets:
-
-```dockerfile
-docker run -e STRAVA_CLIENT_ID=... \
-  -e STRAVA_CLIENT_SECRET=... \
-  -e STRAVA_ACCESS_TOKEN=... \
-  -e STRAVA_REFRESH_TOKEN=... \
-  -e STRAVA_EXPIRES_AT=... \
-  slipstream
-```
-
-Or use an env file with docker-compose:
-
-```yaml
-services:
-  slipstream:
-    image: slipstream
-    env_file:
-      - .env
 ```
