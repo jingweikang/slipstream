@@ -111,14 +111,23 @@ def fetch_stream(activity_id: int, output: str, pretty: bool, keys: str):
     type=int,
     help="Epoch timestamp: only backfill activities after this time (useful for incremental updates)",
 )
+@click.option(
+    "--max-workers",
+    type=int,
+    default=5,
+    help="Number of parallel download threads (default: 5)",
+)
 def backfill_activities_cmd(
-    max_activities: int | None, before: int | None, after: int | None
+    max_activities: int | None,
+    before: int | None,
+    after: int | None,
+    max_workers: int,
 ):
     """Backfill activities from Strava to parquet files.
 
     This command will:
     - Fetch activities using pagination (with optional before/after filters)
-    - Download stream data for each activity
+    - Download stream data for each activity in parallel
     - Save streams as individual parquet files in data/activities/
     - Save activity metadata to data/metadata.parquet
     - Skip activities that already exist locally
@@ -137,8 +146,17 @@ def backfill_activities_cmd(
     \b
     # Test with just 5 activities
     poetry run python scripts/cli.py backfill-activities --max-activities 5
+
+    \b
+    # Use 10 parallel workers for faster downloads
+    poetry run python scripts/cli.py backfill-activities --max-workers 10
     """
-    backfill_activities(max_activities=max_activities, before=before, after=after)
+    backfill_activities(
+        max_activities=max_activities,
+        before=before,
+        after=after,
+        max_workers=max_workers,
+    )
 
 
 if __name__ == "__main__":

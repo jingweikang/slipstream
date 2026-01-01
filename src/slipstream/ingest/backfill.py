@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -97,6 +98,7 @@ def backfill_activities(
     max_activities: int | None = None,
     before: int | None = None,
     after: int | None = None,
+    max_workers: int = 5,
 ) -> None:
     """Backfill activities from Strava to parquet files.
 
@@ -104,6 +106,7 @@ def backfill_activities(
         max_activities: Optional limit on number of activities to process
         before: Epoch timestamp to filter activities before this time
         after: Epoch timestamp to filter activities after this time
+        max_workers: Number of parallel threads for downloading (default: 5)
     """
     _ensure_data_dirs()
 
@@ -118,6 +121,7 @@ def backfill_activities(
     failures = []
 
     logger.info("Starting activity backfill...")
+    logger.info(f"Using {max_workers} parallel workers")
     if before:
         logger.info(f"Filtering activities before: {before}")
     if after:
@@ -142,29 +146,51 @@ def backfill_activities(
 
         _save_metadata(activities)
 
+        activities_to_process = []
         for activity in activities:
-            activity_id = activity["id"]
+            if (
+                max_activities
+                and total_processed + len(activities_to_process) >= max_activities
+            ):
+                break
+            activities_to_process.append(activity["id"])
 
-            if max_activities and total_processed >= max_activities:
+        if not activities_to_process:
+            if max_activities:
                 logger.info(f"Reached max activities limit ({max_activities})")
-                _log_failures(failures)
-                return
+            break
 
-            success = _save_activity_streams(activity_id)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_activity = {
+                executor.submit(_save_activity_streams, activity_id): activity_id
+                for activity_id in activities_to_process
+            }
 
-            if not success:
-                total_failed += 1
-                failures.append(activity_id)
+            for future in as_completed(future_to_activity):
+                activity_id = future_to_activity[future]
+                try:
+                    success = future.result()
+                    if not success:
+                        total_failed += 1
+                        failures.append(activity_id)
+                except Exception as e:
+                    logger.error(f"Activity {activity_id}: Exception - {e}")
+                    total_failed += 1
+                    failures.append(activity_id)
 
-            total_processed += 1
+                total_processed += 1
 
-            time.sleep(0.5)
+        if max_activities and total_processed >= max_activities:
+            logger.info(f"Reached max activities limit ({max_activities})")
+            break
 
         if len(activities) < 200:
             logger.info("Reached end of activities (last page)")
             break
 
         page += 1
+
+        time.sleep(1)
 
     logger.info(
         f"Backfill complete: {total_processed} processed, {total_failed} failed"
