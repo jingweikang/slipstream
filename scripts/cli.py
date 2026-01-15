@@ -1,11 +1,7 @@
+import asyncio
 import json
 
 import click
-from slipstream.analysis.query import execute_query, get_summary_stats
-from slipstream.ingest.auth import build_authorization_url, exchange_code_for_token
-from slipstream.ingest.backfill import backfill_activities
-from slipstream.ingest.strava import fetch_activity_streams, list_activities
-from slipstream.settings import settings
 
 
 @click.group()
@@ -17,6 +13,9 @@ def cli():
 @cli.command(name="auth-start")
 def auth_start():
     """Print the authorization URL to visit in a browser."""
+    from slipstream.ingest.auth import build_authorization_url
+    from slipstream.settings import settings
+
     url = build_authorization_url(
         str(settings.STRAVA_CLIENT_ID),
         settings.STRAVA_REDIRECT_URI,
@@ -32,6 +31,9 @@ def auth_exchange(code: str):
 
     This will print the tokens that you need to set as environment variables.
     """
+    from slipstream.ingest.auth import exchange_code_for_token
+    from slipstream.settings import settings
+
     resp = exchange_code_for_token(
         code,
         str(settings.STRAVA_CLIENT_ID),
@@ -62,6 +64,8 @@ def fetch_activities_cmd(
     per_page: int, page: int, before: int | None, after: int | None
 ):
     """Fetch and print a page of activities for the authorized user."""
+    from slipstream.ingest.strava import list_activities
+
     acts = list_activities(per_page=per_page, page=page, before=before, after=after)
     click.echo(f"Found activities: {len(acts) if isinstance(acts, list) else 0}")
     for a in acts:
@@ -80,6 +84,8 @@ def fetch_activities_cmd(
 )
 def fetch_stream(activity_id: int, output: str, pretty: bool, keys: str):
     """Fetch streams for a single activity and print or save the data."""
+    from slipstream.ingest.strava import fetch_activity_streams
+
     if keys:
         streams = fetch_activity_streams(activity_id, keys=keys)
     else:
@@ -152,6 +158,8 @@ def backfill_activities_cmd(
     # Use 10 parallel workers for faster downloads
     poetry run python scripts/cli.py backfill-activities --max-workers 10
     """
+    from slipstream.ingest.backfill import backfill_activities
+
     backfill_activities(
         max_activities=max_activities,
         before=before,
@@ -177,6 +185,8 @@ def query_cmd(sql: str):
     # Get activities with power data
     poetry run python scripts/cli.py query "SELECT COUNT(DISTINCT filename) FROM 'data/activities/*.parquet' WHERE watts IS NOT NULL"
     """
+    from slipstream.analysis.query import execute_query
+
     try:
         results = execute_query(sql)
 
@@ -194,6 +204,8 @@ def query_cmd(sql: str):
 @cli.command(name="stats")
 def stats_cmd():
     """Show summary statistics about downloaded activities."""
+    from slipstream.analysis.query import get_summary_stats
+
     stats = get_summary_stats()
 
     if "error" in stats:
@@ -257,6 +269,117 @@ def web_cmd(host: str, port: int):
     click.echo("Press Ctrl+C to stop")
 
     uvicorn.run(app, host=host, port=port)
+
+
+@cli.command(name="garmin-hr-monitor")
+@click.option(
+    "--output-dir",
+    type=click.Path(),
+    default="data/garmin",
+    help="Directory to save Parquet files",
+)
+@click.option(
+    "--no-record",
+    is_flag=True,
+    help="Don't save data to file, only display real-time",
+)
+@click.option(
+    "--scan-timeout",
+    type=float,
+    default=10.0,
+    help="How long to scan for devices in seconds",
+)
+def garmin_hr_monitor_cmd(output_dir: str, no_record: bool, scan_timeout: float):
+    """Monitor heart rate from Garmin device via Bluetooth.
+
+    This command will:
+    - Scan for available Garmin devices
+    - Let you select a device
+    - Connect and start monitoring heart rate
+    - Display real-time HR data in the terminal
+    - Record data to Parquet file (unless --no-record is specified)
+
+    Requirements:
+    - Garmin watch must be in pairing/broadcast mode
+    - Bluetooth must be enabled on your Mac
+    - Watch should not be connected to other devices
+
+    Example:
+
+    \b
+    # Start monitoring (with recording)
+    poetry run python scripts/cli.py garmin-hr-monitor
+
+    \b
+    # Monitor without recording
+    poetry run python scripts/cli.py garmin-hr-monitor --no-record
+
+    \b
+    # Custom output directory and longer scan time
+    poetry run python scripts/cli.py garmin-hr-monitor --output-dir data/hr --scan-timeout 15
+    """
+    from pathlib import Path
+
+    from slipstream.garmin.ble_scanner import GarminDeviceScanner
+    from slipstream.garmin.display import HeartRateDisplay
+    from slipstream.garmin.hr_monitor import HeartRateData, HeartRateMonitor
+    from slipstream.garmin.recorder import HeartRateRecorder
+
+    async def monitor():
+        scanner = GarminDeviceScanner()
+        device = await scanner.scan_and_select()
+
+        if device is None:
+            click.echo("No device selected. Exiting.")
+            return
+
+        monitor = HeartRateMonitor(device)
+        display = HeartRateDisplay()
+
+        recorder = None
+        if not no_record:
+            recorder = HeartRateRecorder(Path(output_dir))
+
+        try:
+            connected = await monitor.connect()
+            if not connected:
+                click.echo("Failed to connect. Exiting.")
+                return
+
+            display.start_session()
+            if recorder:
+                recorder.start_session()
+
+            def handle_data(data: HeartRateData):
+                display.display(data)
+                if recorder:
+                    recorder.record(data)
+
+            started = await monitor.start_monitoring(handle_data)
+            if not started:
+                click.echo("Failed to start monitoring. Exiting.")
+                return
+
+            click.echo("\nMonitoring... Press Ctrl+C to stop\n")
+
+            # Keep running until interrupted
+            try:
+                while monitor.is_monitoring:
+                    await asyncio.sleep(1)
+            except KeyboardInterrupt:
+                click.echo("\n\nStopping monitoring...")
+
+        finally:
+            await monitor.stop_monitoring()
+            await monitor.disconnect()
+
+            display.print_summary()
+
+            if recorder:
+                recorder.save()
+
+    # Run the async function
+    asyncio.run(monitor())
 
 
 if __name__ == "__main__":
